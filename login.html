@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PENAHIY - Masuk ke Platform Analisa Saham Pintar</title>
+  
+  <!-- Preconnect & Inter Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    /* CSS Variables styling */
+    :root {
+      --color-green: #10B981;
+      --color-green-glow: rgba(16, 185, 129, 0.15);
+      --color-blue: #3B82F6;
+      --color-blue-glow: rgba(59, 130, 246, 0.2);
+      --color-yellow: #F59E0B;
+      --color-yellow-glow: rgba(245, 158, 11, 0.15);
+      --color-red: #EF4444;
+      --color-bg: #0A0E1A;
+      --color-card: #111827;
+      --color-border: rgba(255, 255, 255, 0.08);
+      --color-text: #F9FAFB;
+      --color-muted: #9CA3AF;
+      --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background-color: var(--color-bg);
+      color: var(--color-text);
+      overflow: hidden;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* Live indices background stream graph */
+    #background-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Black Overlay to ensure text readability */
+    .screen-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      background: linear-gradient(to right, rgba(10, 14, 26, 0.70) 0%, rgba(10, 14, 26, 0.85) 50%, rgba(10, 14, 26, 0.96) 100%);
+      pointer-events: none;
+    }
+
+    @media (max-width: 768px) {
+      .screen-overlay {
+        background: rgba(10, 14, 26, 0.92);
+      }
+    }
+
+    /* Top ticker tape bar */
+    .ticker-tape {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 38px;
+      background: rgba(17, 24, 39, 0.9);
+      border-bottom: 1px solid var(--color-border);
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .ticker-track {
+      display: flex;
+      white-space: nowrap;
+      animation: ticker-move 28s linear infinite;
+    }
+
+    .ticker-item {
+      display: inline-flex;
+      align-items: center;
+      padding: 0 1.5rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .ticker-green {
+      color: var(--color-green);
+    }
+
+    .ticker-red {
+      color: var(--color-red);
+    }
+
+    .ticker-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+
+    .ticker-dot.up {
+      background-color: var(--color-green);
+      box-shadow: 0 0 8px var(--color-green);
+    }
+
+    .ticker-dot.down {
+      background-color: var(--color-red);
+      box-shadow: 0 0 8px var(--color-red);
+    }
+
+    /* Container for login form split view */
+    .viewport-container {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      z-index: 5;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 8%;
+    }
+
+    /* FLOATING DECK - LEFT PANELS */
+    .floating-deck {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      max-width: 360px;
+      pointer-events: auto;
+    }
+
+    @media (max-width: 768px) {
+      .floating-deck {
+        display: none !important;
+      }
+    }
+
+    .floating-card {
+      background: rgba(17, 24, 39, 0.65);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 1.15rem 1.4rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      animation-iteration-count: infinite;
+      animation-timing-function: ease-in-out;
+      transform: translateY(0);
+      opacity: 0;
+      animation-name: feed-fade-in;
+      animation-duration: 0.8s;
+      animation-fill-mode: forwards;
+      text-align: left;
+    }
+
+    .card-one {
+      animation: float-one 6s ease-in-out infinite, feed-fade-in 0.8s forwards;
+      animation-delay: 0.2s, 0.2s;
+    }
+
+    .card-two {
+      animation: float-two 8s ease-in-out infinite, feed-fade-in 0.8s forwards;
+      animation-delay: 0.4s, 0.4s;
+    }
+
+    .card-three {
+      animation: float-three 7s ease-in-out infinite, feed-fade-in 0.8s forwards;
+      animation-delay: 0.6s, 0.6s;
+    }
+
+    .floating-card-title {
+      font-size: 0.725rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .floating-card-title.up-label {
+      color: var(--color-green);
+    }
+
+    .floating-card-value {
+      font-size: 1.35rem;
+      font-weight: 850;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.25rem;
+    }
+
+    .floating-card-desc {
+      font-size: 0.75rem;
+      color: var(--color-muted);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Small sparklines inside floating cards */
+    .mini-sparkline {
+      width: 70px;
+      height: 22px;
+      display: inline-block;
+      margin-left: auto;
+    }
+
+    /* LOGIN CARD CONTAINER */
+    .login-container {
+      width: 420px;
+      perspective: 1000px;
+      opacity: 0;
+      transform: translateX(40px);
+      animation: slide-in-right 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation-delay: 0.1s;
+    }
+
+    @media (max-width: 768px) {
+      .login-container {
+        width: 100%;
+        max-width: 440px;
+        margin: 0 auto;
+        transform: translateX(0) scale(0.95);
+        animation: fade-in 0.6s ease forwards;
+      }
+      .viewport-container {
+        padding: 0 1.5rem;
+        justify-content: center;
+      }
+    }
+
+    .login-card {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--color-border);
+      border-radius: 20px;
+      padding: 2.25rem;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+      text-align: center;
+    }
+
+    /* Logo Penahiy Header rendering */
+    .logo-box {
+      margin-top: 0.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: center;
+      animation: scale-logo 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    /* Card titles */
+    .welcome-heading {
+      font-size: 1.35rem;
+      font-weight: 850;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.35rem;
+      color: #FFFFFF;
+    }
+
+    .welcome-sub {
+      font-size: 0.85rem;
+      color: var(--color-muted);
+      font-weight: 500;
+      margin-bottom: 1.75rem;
+    }
+
+    .form-divider {
+      height: 1px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 100%);
+      margin-bottom: 1.5rem;
+      border: none;
+    }
+
+    /* Form Fields Control */
+    .input-group {
+      text-align: left;
+      margin-bottom: 1.25rem;
+      position: relative;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 0.775rem;
+      font-weight: 750;
+      color: var(--color-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .input-inner-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-icon-left {
+      position: absolute;
+      left: 1rem;
+      color: var(--color-muted);
+      pointer-events: none;
+      width: 18px;
+      height: 18px;
+    }
+
+    .form-input {
+      width: 100%;
+      background-color: #1F2937;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 13px 1rem 13px 2.75rem;
+      color: var(--color-text);
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 500;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .form-input::placeholder {
+      color: #6B7280;
+    }
+
+    .form-input:focus {
+      border-color: var(--color-blue);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+      background-color: #111827;
+    }
+
+    /* Password toggler eyeball button */
+    .password-toggle-btn {
+      position: absolute;
+      right: 1rem;
+      background: none;
+      border: none;
+      color: var(--color-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.25rem;
+    }
+
+    .password-toggle-btn:hover {
+      color: var(--color-text);
+    }
+
+    /* Preferences line */
+    .pref-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      color: var(--color-muted);
+      font-weight: 500;
+      user-select: none;
+    }
+
+    .checkbox-container input {
+      accent-color: var(--color-blue);
+      width: 15px;
+      height: 15px;
+    }
+
+    .forgot-link {
+      color: var(--color-blue);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .forgot-link:hover {
+      text-decoration: underline;
+    }
+
+    /* LOGIN PRIMARY BUTTON */
+    .btn-login {
+      width: 100%;
+      height: 52px;
+      background: linear-gradient(135deg, var(--color-green), var(--color-blue));
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-size: 0.95rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .btn-login:hover {
+      filter: brightness(1.1);
+      transform: translateY(-2px) scale(1.01);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-login:active {
+      transform: translateY(0) scale(0.99);
+    }
+
+    /* Sign out spinner load representation */
+    .spinner {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* SSO section divider */
+    .sso-divider-row {
+      display: flex;
+      align-items: center;
+      margin: 1.5rem 0;
+      color: var(--color-muted);
+      font-size: 0.725rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .sso-divider-line {
+      flex: 1;
+      height: 1px;
+      background: var(--color-border);
+    }
+
+    .sso-divider-text {
+      padding: 0 0.75rem;
+    }
+
+    /* GOOGLE SSO BUTTON */
+    .btn-google {
+      width: 100%;
+      height: 48px;
+      background-color: #1F2937;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      color: var(--color-text);
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn-google:hover {
+      background-color: #111827;
+      border-color: var(--color-text);
+    }
+
+    /* SSO Google icon vector colors */
+    .google-icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* Footer message style */
+    .register-footer {
+      margin-top: 1.75rem;
+      font-size: 0.825rem;
+      color: var(--color-muted);
+      font-weight: 500;
+    }
+
+    .register-link {
+      color: var(--color-green);
+      text-decoration: none;
+      font-weight: 750;
+    }
+
+    .register-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Regulatory T&C Disclaimer foot */
+    .compliance-footer {
+      margin-top: 1.5rem;
+      font-size: 0.65rem;
+      color: #4B5563;
+      line-height: 1.35;
+      font-weight: 500;
+    }
+
+    /* Dynamic alerts banner standard */
+    .status-toast {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(17, 24, 39, 0.95);
+      border: 1px solid var(--color-green);
+      box-shadow: 0 10px 35px rgba(16, 185, 129, 0.15);
+      padding: 0.85rem 1.5rem;
+      border-radius: 9999px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      z-index: 999;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .status-toast.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Keyframes animations definitions */
+    @keyframes ticker-move {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    @keyframes fade-in {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+
+    @keyframes feed-fade-in {
+      0% { opacity: 0; transform: translateY(15px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slide-in-right {
+      0% { opacity: 0; transform: translateX(40px) scale(0.98); }
+      100% { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    @keyframes scale-logo {
+      0% { transform: scale(0.85); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Floating subtle translate movements specs */
+    @keyframes float-one {
+      0% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-8px) rotate(0.2deg); }
+      100% { transform: translateY(0px) rotate(0deg); }
+    }
+
+    @keyframes float-two {
+      0% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-10px) rotate(-0.3deg); }
+      100% { transform: translateY(0px) rotate(0deg); }
+    }
+
+    @keyframes float-three {
+      0% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-6px) rotate(0.1deg); }
+      100% { transform: translateY(0px) rotate(0deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Fullscreen Dynamic Canvas index chart -->
+  <canvas id="background-canvas"></canvas>
+
+  <!-- Solid Gradient safety backdrop filter overlay -->
+  <div class="screen-overlay"></div>
+
+  <!-- Real Ticker Tape indices panel marquee -->
+  <div class="ticker-tape">
+    <div class="ticker-track">
+      <div class="ticker-item"><span class="ticker-dot up"></span>🟢 IHSG +0,65%</div>
+      <div class="ticker-item ticker-green">BBCA 9.700 +3,85%</div>
+      <div class="ticker-item ticker-green">BBRI 5.100 +6,25%</div>
+      <div class="ticker-item ticker-red">TLKM 3.980 -1,24%</div>
+      <div class="ticker-item ticker-red">GOTO 62 -5,63%</div>
+      <div class="ticker-item ticker-green">AMMN 9.800 +4,21%</div>
+      <div class="ticker-item ticker-green">LQ45 +0,66%</div>
+      <div class="ticker-item ticker-red">IDX30 -0,42%</div>
+      <div class="ticker-item ticker-green">ANTM 1.875 +2,45%</div>
+      <div class="ticker-item ticker-green">BMRI 6.350 +3,52%</div>
+      <div class="ticker-item ticker-green">ASII 4.890 +1,23%</div>
+      
+      <!-- Duplicate looping node for flawless seamless translations -->
+      <div class="ticker-item"><span class="ticker-dot up"></span>🟢 IHSG +0,65%</div>
+      <div class="ticker-item ticker-green">BBCA 9.700 +3,85%</div>
+      <div class="ticker-item ticker-green">BBRI 5.100 +6,25%</div>
+      <div class="ticker-item ticker-red">TLKM 3.980 -1,24%</div>
+      <div class="ticker-item ticker-red">GOTO 62 -5,63%</div>
+      <div class="ticker-item ticker-green">AMMN 9.800 +4,21%</div>
+      <div class="ticker-item ticker-green">LQ45 +0,66%</div>
+      <div class="ticker-item ticker-red">IDX30 -0,42%</div>
+      <div class="ticker-item ticker-green">ANTM 1.875 +2,45%</div>
+      <div class="ticker-item ticker-green">BMRI 6.350 +3,52%</div>
+      <div class="ticker-item ticker-green">ASII 4.890 +1,23%</div>
+    </div>
+  </div>
+
+  <!-- Primary viewport window -->
+  <main class="viewport-container" style="margin-top: 38px; height: calc(100vh - 38px);">
+    
+    <!-- LEFT FLOATING DECKS -->
+    <section class="floating-deck">
+      
+      <!-- CARD 1: IHSG real indices -->
+      <div class="floating-card card-one" style="display: flex; align-items: center; width: 340px;">
+        <div style="flex: 1;">
+          <div class="floating-card-title up-label">
+            <svg style="width: 12px; height: 12px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+            🟢 INDEKS BI IHSG
+          </div>
+          <div class="floating-card-value">7.284,15</div>
+          <div class="floating-card-desc">Sektor Keuangan Menguat · +0,65%</div>
+        </div>
+        <svg class="mini-sparkline" viewBox="0 0 100 30" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 0 25 Q 15 15 30 20 T 60 10 T 90 5 T 100 2" fill="none" stroke="var(--color-green)" stroke-width="2.5" stroke-linecap="round" />
+          <path d="M 0 25 Q 15 15 30 20 T 60 10 T 90 5 T 100 2 L 100 30 L 0 30 Z" fill="url(#mini-grad)" opacity="0.1" />
+          <defs>
+            <linearGradient id="mini-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="var(--color-green)" />
+              <stop offset="100%" stop-color="transparent" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
+      <!-- CARD 2: Market Score index health -->
+      <div class="floating-card card-two">
+        <div class="floating-card-title">💪 SKOR SEHAT BURSA</div>
+        <div class="floating-card-value" style="color: #F59E0B;">74 <span style="font-size: 0.85rem; color: var(--color-muted); font-weight: 600;">/ 100</span></div>
+        <div class="floating-card-desc">
+          <span style="display:inline-block; width: 6px; height:6px; border-radius:50%; background:#10B981;"></span>
+          Sentimen Emiten: SEHAT AKUMULASI
+        </div>
+      </div>
+
+      <!-- CARD 3: Radar Bandar statistics summary -->
+      <div class="floating-card card-three">
+        <div class="floating-card-title">🔍 RADAR BANDAR</div>
+        <div class="floating-card-value" style="color: #3B82F6;">AKUMULASI</div>
+        <div class="floating-card-desc">3 Saham Terdeteksi Transaksi Tidak Wajar</div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT LOGIN ACCOUNT PORTAL PANEL -->
+    <section class="login-container">
+      <div class="login-card">
+        
+        <!-- BAGIAN 1: LOGO PENAHIY PROFESSIONAL SVG INLINE -->
+        <div class="logo-box">
+          <svg width="280" height="60" viewBox="0 0 280 60" xmlns="http://www.w3.org/2000/svg" style="display: block;">
+            <defs>
+              <linearGradient id="p-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#10B981" />
+                <stop offset="100%" stop-color="#3B82F6" />
+              </linearGradient>
+              <linearGradient id="text-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#FFFFFF" />
+                <stop offset="100%" stop-color="#E2E8F0" />
+              </linearGradient>
+            </defs>
+            <!-- Stylized Candlestick loop which shapes the dynamic letter P -->
+            <g transform="translate(5, 5)">
+              <!-- Background bar glow -->
+              <rect x="11" y="9" width="6" height="28" rx="2" fill="url(#p-grad)" opacity="0.15" filter="blur(2px)" />
+              <!-- Wick Line representing the vertical spine of 'P' and candlestick style -->
+              <line x1="14" y1="3" x2="14" y2="41" stroke="url(#p-grad)" stroke-width="2.5" stroke-linecap="round" />
+              <!-- Body bar representing candlestick -->
+              <rect x="11" y="10" width="6" height="24" rx="2.5" fill="url(#p-grad)" />
+              <!-- The Loop forming letter P and transform arrow looping upwards -->
+              <path d="M15 11 C28 11, 31 18, 15 25" stroke="url(#p-grad)" stroke-width="4.5" fill="none" stroke-linecap="round" />
+              <!-- Blasting dynamic Arrow vector pointing top-right inside the hollow inner P -->
+              <path d="M19 24 L29 14 M24 14 L29 14 L29 19" stroke="url(#p-grad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            </g>
+            
+            <!-- High professional Typography layout -->
+            <text x="56" y="32" fill="url(#text-grad)" font-family="'Inter', sans-serif" font-size="21" font-weight="900" letter-spacing="4px">PENAHIY</text>
+            <text x="56" y="47" fill="#9CA3AF" font-family="'Inter', sans-serif" font-size="8.5" font-weight="700" letter-spacing="1px" opacity="0.85">ANALISA TAJAM, INVESTASI LEBIH CERDAS</text>
+          </svg>
+        </div>
+
+        <h2 class="welcome-heading">Selamat Datang Kembali</h2>
+        <p class="welcome-sub">Masuk untuk melihat analisa saham terkini</p>
+
+        <hr class="form-divider" />
+
+        <!-- Form entry actions wrapper -->
+        <form id="login-form" onsubmit="handleLoginSubmit(event)">
+          
+          <!-- Input field email address -->
+          <div class="input-group">
+            <label class="input-label" for="login-email">Alamat Email</label>
+            <div class="input-inner-wrapper">
+              <svg class="input-icon-left" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+              </svg>
+              <input 
+                type="email" 
+                id="login-email" 
+                class="form-input" 
+                placeholder="nama@email.com" 
+                required 
+                autocomplete="username"
+              />
+            </div>
+          </div>
+
+          <!-- Input field security password entry -->
+          <div class="input-group">
+            <label class="input-label" for="login-password">Password Akun</label>
+            <div class="input-inner-wrapper">
+              <svg class="input-icon-left" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <input 
+                type="password" 
+                id="login-password" 
+                class="form-input" 
+                placeholder="Masukkan kata sandi tebal" 
+                required 
+                autocomplete="current-password"
+              />
+              <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility()" aria-label="Tampilkan sandi">
+                <svg id="eye-icon" style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Extra elements preferences checkbox -->
+          <div class="pref-row">
+            <label class="checkbox-container">
+              <input type="checkbox" checked />
+              <span>Ingat saya</span>
+            </label>
+            <a href="#" class="forgot-link" onclick="triggerForgotPassword(event)">Lupa Password?</a>
+          </div>
+
+          <!-- Action execution triggers primary button -->
+          <button type="submit" id="submit-action-btn" class="btn-login">
+            <span class="spinner" id="btn-spinner"></span>
+            <span id="btn-text">Masuk ke PENAHIY</span>
+          </button>
+
+        </form>
+
+        <!-- Social SSO integrations divider -->
+        <div class="sso-divider-row">
+          <div class="sso-divider-line"></div>
+          <span class="sso-divider-text">atau masuk dengan</span>
+          <div class="sso-divider-line"></div>
+        </div>
+
+        <button type="button" class="btn-google" onclick="triggerGoogleSSO()">
+          <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" />
+          </svg>
+          Kontinuasi via Google SSO
+        </button>
+
+        <p class="register-footer">
+          Belum punya akun? <a href="#" class="register-link" onclick="triggerRegistration(event)">Daftar Gratis</a>
+        </p>
+
+        <p class="compliance-footer">
+          Dengan mengoperasikan sistem masuk bursa, Anda menyetujui secara sadar seluruh bentuk <strong style="color:var(--color-muted);">Syarat & Ketentuan Lisensi</strong> serta <strong style="color:var(--color-muted);">Kebijakan Privasi Data Emansipasi</strong> platform SahamPintar PENAHIY.
+        </p>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Interactive Action Toasts bottom alert banner -->
+  <div id="action-toast" class="status-toast">
+    <svg style="width: 16px; height: 16px; color: var(--color-green);" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+    </svg>
+    <span id="toast-message-text">Sesi Verifikasi Log Terkoneksi</span>
+  </div>
+
+  <script>
+    // 1. CANVAS REAL-TIME GRAPHICS ENGINE FOR LIVESTREAM RANDOM WALKS
+    const canvas = document.getElementById('background-canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Handle proper responsive sizing of canvas viewport
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Initial parameters matching user explicit specifications
+    const POINTS_COUNT = 140;
+    
+    // Algoritma Random Walk sesuai penugasan explicit prompt
+    function generateStockData(baseValue, points = POINTS_COUNT) {
+      const data = [baseValue];
+      for (let i = 1; i < points; i++) {
+        const change = (Math.random() - 0.48) * baseValue * 0.008;
+        const newVal = data[i-1] + change;
+        data.push(Math.max(newVal, baseValue * 0.85)); // safety floor floor limit
+      }
+      return data;
+    }
+
+    // Prepare indices datasets (IHSG, LQ45, IDX30)
+    let ihsgPoints = generateStockData(7300, POINTS_COUNT);
+    let lq45Points = generateStockData(960, POINTS_COUNT);
+    let idx30Points = generateStockData(520, POINTS_COUNT);
+
+    // Dynamic push mechanism: every 3 seconds append a new point and shift older points
+    setInterval(() => {
+      // IHSG dynamic ticker change
+      const lastIhsg = ihsgPoints[ihsgPoints.length - 1];
+      const changeIhsg = (Math.random() - 0.48) * lastIhsg * 0.006;
+      ihsgPoints.shift();
+      ihsgPoints.push(Math.max(lastIhsg + changeIhsg, 6000));
+
+      // LQ45
+      const lastLq = lq45Points[lq45Points.length - 1];
+      const changeLq = (Math.random() - 0.48) * lastLq * 0.006;
+      lq45Points.shift();
+      lq45Points.push(Math.max(lastLq + changeLq, 800));
+
+      // IDX30
+      const lastIdx = idx30Points[idx30Points.length - 1];
+      const changeIdx = (Math.random() - 0.48) * lastIdx * 0.006;
+      idx30Points.shift();
+      idx30Points.push(Math.max(lastIdx + changeIdx, 400));
+      
+      // Sync update floating cards visually if exists on left side
+      document.querySelector('.card-one .floating-card-value').textContent = 
+        Math.round(ihsgPoints[ihsgPoints.length - 1]).toLocaleString('id-ID') + ",15";
+    }, 3000);
+
+    // Draw loop executing at high-end client hardware frame rate via requestAnimationFrame
+    function drawCharts() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw gridlines first
+      drawGrid();
+
+      // Draw each Index series (IHSG, LQ45, IDX30)
+      // Y bounds layout map helper
+      // IHSG maps ~6200-7800 down to canvas height screen
+      drawSingleChartPath(ihsgPoints, 6200, 7800, '#10B981'); // Green
+      drawSingleChartPath(lq45Points, 800, 1050, '#3B82F6');   // Blue
+      drawSingleChartPath(idx30Points, 400, 600, '#F59E0B');  // Yellow
+
+      requestAnimationFrame(drawCharts);
+    }
+
+    function drawGrid() {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 8]);
+
+      // Vertical grids
+      const columns = 10;
+      for (let i = 1; i < columns; i++) {
+        const x = (canvas.width / columns) * i;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+
+      // Horizontal grid lines
+      const rows = 8;
+      ctx.fillStyle = 'rgba(156, 163, 175, 0.35)'; // text color
+      ctx.font = '9px Inter';
+      for (let i = 1; i < rows; i++) {
+        const y = (canvas.height / rows) * i;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+
+        // Print Indonesian styled index Y markers on far left
+        ctx.fillText((8000 - i * 1000).toLocaleString('id-ID'), 12, y - 4);
+      }
+      ctx.setLineDash([]); // reset
+    }
+
+    function drawSingleChartPath(points, minVal, maxVal, strokeStyle) {
+      const padX = 100; // room for text
+      const plotWidth = canvas.width - padX;
+      
+      // Convert index points to precise coordinates on screen
+      const coords = [];
+      for (let i = 0; i < points.length; i++) {
+        const x = (plotWidth / (points.length - 1)) * i;
+        // Normalize value between min and max
+        const norm = (points[i] - minVal) / (maxVal - minVal);
+        // Map to canvas scale (inverted Y axis, leaving padding margins)
+        const y = canvas.height - (norm * (canvas.height * 0.7) + (canvas.height * 0.15));
+        coords.push({ x, y });
+      }
+
+      // Create transparent color gradients under index pathways
+      const fillGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      fillGradient.addColorStop(0, strokeStyle + '1D'); // opacity 0.11 or similar
+      fillGradient.addColorStop(0.5, strokeStyle + '0B'); 
+      fillGradient.addColorStop(1, 'transparent');
+
+      // 1. Draw solid line path
+      ctx.beginPath();
+      ctx.moveTo(coords[0].x, coords[0].y);
+      for (let i = 1; i < coords.length; i++) {
+        // Curve smoothly via quadratic bezier points or simple lineto
+        const exc = (coords[i - 1].x + coords[i].x) / 2;
+        const eyc = (coords[i - 1].y + coords[i].y) / 2;
+        ctx.quadraticCurveTo(coords[i - 1].x, coords[i - 1].y, exc, eyc);
+      }
+      ctx.lineTo(coords[coords.length - 1].x, coords[coords.length - 1].y);
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = 1.85;
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = strokeStyle;
+      ctx.stroke();
+      ctx.shadowBlur = 0; // reset
+
+      // 2. Fill area underneath
+      ctx.beginPath();
+      ctx.moveTo(coords[0].x, canvas.height);
+      ctx.lineTo(coords[0].x, coords[0].y);
+      for (let i = 1; i < coords.length; i++) {
+        ctx.lineTo(coords[i].x, coords[i].y);
+      }
+      ctx.lineTo(coords[coords.length - 1].x, canvas.height);
+      ctx.closePath();
+      ctx.fillStyle = fillGradient;
+      ctx.fill();
+    }
+
+    // Initialize drawings loop
+    drawCharts();
+
+
+    // 2. PASSWORD INPUT VISIBILITY MUTATOR
+    let isPasswordHidden = true;
+    function togglePasswordVisibility() {
+      const passField = document.getElementById('login-password');
+      const eyeIcon = document.getElementById('eye-icon');
+      
+      if (isPasswordHidden) {
+        passField.type = 'text';
+        eyeIcon.innerHTML = `
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+        `;
+        isPasswordHidden = false;
+      } else {
+        passField.type = 'password';
+        eyeIcon.innerHTML = `
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        `;
+        isPasswordHidden = true;
+      }
+    }
+
+    // 3. TOAST SHOW NOTIFICATION SYSTEM
+    function displayToast(text) {
+      const toast = document.getElementById('action-toast');
+      const message = document.getElementById('toast-message-text');
+      message.textContent = text;
+      
+      toast.classList.add('visible');
+      setTimeout(() => {
+        toast.classList.remove('visible');
+      }, 3500);
+    }
+
+    // 4. ACTION TRIGGERS (VERIFICATION SIMULATIONS)
+    function handleLoginSubmit(event) {
+      event.preventDefault();
+
+      const btn = document.getElementById('submit-action-btn');
+      const spinner = document.getElementById('btn-spinner');
+      const btnText = document.getElementById('btn-text');
+      const emailVal = document.getElementById('login-email').value;
+
+      // Enter state: disable and show spinner
+      btn.disabled = true;
+      spinner.style.display = 'inline-block';
+      btnText.textContent = 'Memverifikasi...';
+
+      // Mock remote network latency delay 2.2 seconds
+      setTimeout(() => {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.textContent = 'Masuk ke PENAHIY';
+        
+        displayToast(`Selamat bergabung! Tautan otentikasi dikirim ke ${emailVal}`);
+        
+        // Wait 1.5s and redirect to main application
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
+
+      }, 2200);
+    }
+
+    function triggerGoogleSSO() {
+      displayToast("Menghubungkan integrasi Google Workspace Single Sign-On...");
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1200);
+    }
+
+    function triggerForgotPassword(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value || "rekan bursa";
+      displayToast(`Instruksi pengaturan ulang keamanan dikirimkan ke e-mail.`);
+    }
+
+    function triggerRegistration(e) {
+      e.preventDefault();
+      displayToast("Membuka form registrasi anggota bursa eksklusif...");
+    }
+  </script>
+</body>
+</html>

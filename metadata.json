@@ -1,0 +1,6 @@
+{
+  "name": "Penahiy",
+  "description": "Platform Analisa Saham Indonesia. Analisa Tajam, Keputusan Cerdas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
